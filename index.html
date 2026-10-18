@@ -1,0 +1,316 @@
+<title>Gold Making Charge Calculator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Tajawal:wght@500;700;800&display=swap">
+<style>
+/* Layout: one narrow column — inputs card, then a receipt-style breakdown */
+:root {
+  --bg: #f7f4ee;
+  --surface: #ffffff;
+  --fg: #231e14;
+  --muted: #6e6655;
+  --line: #e6dfcf;
+  --gold: #a87a12;
+  --gold-soft: #f3e6c4;
+  --good: #2f7a4a;
+  --bad: #b23a2a;
+  --display: "Fraunces", Georgia, serif;
+  --body: "Manrope", system-ui, -apple-system, Segoe UI, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15130f; --surface: #1f1c16; --fg: #f1ead9; --muted: #a59c88;
+    --line: #353025; --gold: #e2b44a; --gold-soft: #3a2f16; --good: #6cc48b; --bad: #ef7a68;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15130f; --surface: #1f1c16; --fg: #f1ead9; --muted: #a59c88;
+  --line: #353025; --gold: #e2b44a; --gold-soft: #3a2f16; --good: #6cc48b; --bad: #ef7a68;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+.wrap { max-width: 520px; margin: 0 auto; display: grid; gap: 20px; }
+header h1 { font-family: var(--display); font-size: 1.9rem; line-height: 1.15; margin: 0 0 6px; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); }
+header a { color: var(--gold); font-weight: 600; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 16px; }
+.label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+
+.karats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.karats button {
+  font: 600 1rem var(--mono); padding: 10px 0; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+}
+.karats button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: var(--surface); }
+
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+.field label { font-size: .85rem; font-weight: 600; }
+.field small { color: var(--muted); font-size: .75rem; }
+.inp { position: relative; }
+.inp input {
+  width: 100%; font: 600 1.05rem var(--mono); padding: 11px 52px 11px 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.inp input::placeholder { color: var(--muted); opacity: .6; font-weight: 500; }
+.inp span { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: .8rem; font-weight: 600; pointer-events: none; }
+input:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.result {
+  background: var(--gold-soft); border-radius: 14px; padding: 20px 18px; display: grid; gap: 4px;
+}
+.result .big { font-family: var(--display); font-size: 2.6rem; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.result .big small { font-family: var(--body); font-size: 1rem; color: var(--muted); font-weight: 600; }
+.result .sub { color: var(--muted); }
+
+.steps { display: grid; gap: 0; }
+.row {
+  display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline;
+  padding: 10px 0; border-bottom: 1px dashed var(--line);
+}
+.row:last-child { border-bottom: 0; }
+.row .what { min-width: 0; }
+.row .what b { display: block; font-weight: 600; }
+.row .what span { color: var(--muted); font: 500 .78rem var(--mono); }
+.row .num { font: 600 1rem var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row.total .num { color: var(--gold); font-size: 1.1rem; }
+.neg { color: var(--bad); }
+.warn { color: var(--bad); font-size: .85rem; font-weight: 600; }
+.note { color: var(--muted); font-size: .8rem; }
+.hintrow { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; align-items: baseline; }
+.link { background: none; border: 0; padding: 0; color: var(--gold); font: 700 .78rem var(--body); cursor: pointer; text-decoration: underline; }
+@media (max-width: 380px) { .fields { grid-template-columns: 1fr; } }
+html[dir="rtl"] { --display: "Tajawal", "Geeza Pro", Tahoma, sans-serif; --body: "Tajawal", "Geeza Pro", Tahoma, sans-serif; }
+html[dir="rtl"] .label { letter-spacing: 0; }
+.ltr { direction: ltr; unicode-bidi: isolate; }
+.row .what span { direction: ltr; unicode-bidi: isolate; text-align: start; }
+html[dir="rtl"] .row .what span { text-align: right; }
+.inp input { direction: ltr; text-align: left; }
+footer { display: flex; justify-content: center; padding-top: 4px; }
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--surface); gap: 2px; }
+.lang button { border: 0; background: none; color: var(--muted); font: 700 .9rem var(--body); padding: 7px 16px; border-radius: 999px; cursor: pointer; }
+.lang button[data-l="ar"] { font-family: "Tajawal", Tahoma, sans-serif; }
+.lang button[aria-pressed="true"] { background: var(--gold); color: var(--surface); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1 data-t="title">Gold Making Charge Calculator</h1>
+    <p><span data-t="intro">Find out how much the shop is charging on top of the gold. Prices update automatically from</span> <a href="https://uaegoldprices.com/" target="_blank" rel="noopener">uaegoldprices.com</a> <span data-t="check">(check the price first).</span></p>
+  </header>
+
+  <section class="card">
+    <div class="field">
+      <div class="label" data-t="karat">Karat</div>
+      <div class="karats" id="karats">
+        <button type="button" data-k="18" aria-pressed="true">18K</button>
+        <button type="button" data-k="21" aria-pressed="false">21K</button>
+        <button type="button" data-k="22" aria-pressed="false">22K</button>
+        <button type="button" data-k="24" aria-pressed="false">24K</button>
+      </div>
+    </div>
+    <div class="fields">
+      <div class="field full">
+        <label for="price" data-t="price">Gold price per gram today</label>
+        <div class="inp"><input id="price" type="number" inputmode="decimal" step="0.01" min="0" value="369"><span data-t="aedg">AED/g</span></div>
+        <div class="hintrow"><small id="priceHint"></small><button type="button" id="resetPrice" class="link" data-t="reset" hidden>Use today's price</button></div>
+      </div>
+      <div class="field">
+        <label for="weight" data-t="weight">Weight</label>
+        <div class="inp"><input id="weight" type="number" inputmode="decimal" step="0.01" min="0" placeholder="e.g. 5"><span data-t="g">g</span></div>
+      </div>
+      <div class="field">
+        <label for="disc" data-t="vat">VAT</label>
+        <div class="inp"><input id="disc" type="number" inputmode="decimal" step="0.5" min="0" max="100" value="5"><span>%</span></div>
+      </div>
+      <div class="field full">
+        <label for="seller" data-t="seller">Seller's price</label>
+        <div class="inp"><input id="seller" type="number" inputmode="decimal" step="1" min="0" placeholder="e.g. 2140"><span data-t="aed">AED</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="result" aria-live="polite">
+    <div class="label" data-t="perGram">Factory price per gram</div>
+    <div class="big"><span id="perGram" class="ltr">—</span> <small data-t="aedg">AED/g</small> <small id="perGramVat"></small></div>
+    <div class="sub" id="summary"></div>
+  </section>
+
+  <section class="card">
+    <div class="label" data-t="how">How it's worked out</div>
+    <div class="steps">
+      <div class="row"><div class="what"><b data-t="s1">Price without VAT</b><span id="s1f"></span></div><div class="num" id="s1"></div></div>
+      <div class="row"><div class="what"><b data-t="s2">Pure gold value</b><span id="s2f"></span></div><div class="num" id="s2"></div></div>
+      <div class="row"><div class="what"><b data-t="s3">Factory cut</b><span id="s3f"></span></div><div class="num" id="s3"></div></div>
+      <div class="row total"><div class="what"><b data-t="perGram">Factory price per gram</b><span id="s4f"></span></div><div class="num" id="s4"></div></div>
+    </div>
+    <div class="warn" id="warn" hidden></div>
+  </section>
+
+  <footer>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-l="en" aria-pressed="true">English</button>
+      <button type="button" data-l="ar" aria-pressed="false">العربية</button>
+    </div>
+  </footer>
+</div>
+
+<script id="gold-prices" type="application/json">{"date":"2026-10-18","time":"08:32","18":368.65,"21":430.09,"22":450.57,"24":491.53}</script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const price = $('price'), weight = $('weight'), disc = $('disc'), seller = $('seller');
+  let today = {};
+  try { today = JSON.parse(document.getElementById('gold-prices').textContent) || {}; } catch (e) { today = {}; }
+  let karat = 18;
+  let lang = 'en';
+  try { if (localStorage.getItem('goldLang') === 'ar') lang = 'ar'; } catch (e) {}
+
+  const T = {
+    en: {
+      title: 'Gold Making Charge Calculator',
+      intro: 'Find out how much the shop is charging on top of the gold. Prices update automatically from',
+      check: '(check the price first).',
+      karat: 'Karat', price: 'Gold price per gram today', aedg: 'AED/g', g: 'g', aed: 'AED',
+      weight: 'Weight', vat: 'VAT', seller: "Seller's price", reset: "Use today's price",
+      perGram: 'Factory price per gram', how: "How it's worked out",
+      s1: 'Price without VAT', s2: 'Pure gold value', s3: 'Factory cut',
+      eg: 'e.g.', k: k => k + 'K',
+      hintNone: k => `Type today's ${k}K price per gram`,
+      hintEdited: (k, t) => `You changed it. Today's ${k}K price is ${t}`,
+      hint: (k, raw, when, t) => `Today's ${k}K price is ${raw} on uaegoldprices.com (${when}), rounded up to ${t}. You can change it.`,
+      empty: "Enter the weight and the seller's price.",
+      withVat: v => `(${v} with VAT)`,
+      summary: (k, w, x, cut) => `${k}K, ${w} g. You pay ${x} AED, of which ${cut} AED is the factory cut.`,
+      warn: 'The price without VAT is less than the gold value. Check the karat, gold price and weight.',
+      locale: 'en-GB'
+    },
+    ar: {
+      title: 'حاسبة مصنعية الذهب',
+      intro: 'اعرف كم يأخذ المحل فوق سعر الذهب. الأسعار تتحدث تلقائياً من',
+      check: '(تأكد من السعر أولاً).',
+      karat: 'العيار', price: 'سعر جرام الذهب اليوم', aedg: 'درهم/جم', g: 'جم', aed: 'درهم',
+      weight: 'الوزن', vat: 'الضريبة', seller: 'سعر البائع', reset: 'استخدم سعر اليوم',
+      perGram: 'مصنعية الجرام', how: 'طريقة الحساب',
+      s1: 'السعر بدون ضريبة', s2: 'قيمة الذهب الصافي', s3: 'المصنعية',
+      eg: 'مثال', k: k => 'عيار ' + k,
+      hintNone: k => `اكتب سعر جرام عيار ${k} اليوم`,
+      hintEdited: (k, t) => `غيّرت السعر. سعر عيار ${k} اليوم ${t}`,
+      hint: (k, raw, when, t) => `سعر عيار ${k} اليوم ${raw} في uaegoldprices.com (${when})، مقرّب لأعلى إلى ${t}. تقدر تغيّره.`,
+      empty: 'اكتب الوزن وسعر البائع.',
+      withVat: v => `(${v} مع الضريبة)`,
+      summary: (k, w, x, cut) => `عيار ${k}، ${w} جم. تدفع ${x} درهم، منها ${cut} درهم مصنعية.`,
+      warn: 'السعر بدون ضريبة أقل من قيمة الذهب. تأكد من العيار وسعر الذهب والوزن.',
+      locale: 'ar-AE-u-nu-latn'
+    }
+  };
+  const L = () => T[lang];
+
+  const rounded = k => today[k] != null ? Math.ceil(today[k] - 1e-9) : null;
+  const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const num = el => parseFloat(el.value);
+  const when = () => {
+    if (!today.date) return '';
+    const d = new Date(today.date + 'T00:00:00');
+    return d.toLocaleDateString(L().locale, { day: 'numeric', month: 'short' }) + (today.time ? ', ' + today.time : '');
+  };
+
+  function applyLang() {
+    const t = L();
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.querySelectorAll('[data-t]').forEach(el => { el.textContent = t[el.dataset.t]; });
+    document.querySelectorAll('#karats button').forEach(b => { b.textContent = t.k(b.dataset.k); });
+    document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.l === lang)));
+    weight.placeholder = `${t.eg} 5`;
+    seller.placeholder = `${t.eg} 2140`;
+    updateHint();
+    calc();
+  }
+
+  function updateHint() {
+    const t = rounded(karat);
+    const raw = today[karat];
+    const edited = t != null && Math.abs(num(price) - t) > 0.0001;
+    $('priceHint').textContent = t == null ? L().hintNone(karat)
+      : edited ? L().hintEdited(karat, t)
+      : L().hint(karat, fmt(raw), when(), t);
+    $('resetPrice').hidden = !edited;
+  }
+
+  function setKarat(k) {
+    karat = k;
+    document.querySelectorAll('#karats button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.k === k)));
+    price.value = rounded(k) != null ? rounded(k) : '';
+    updateHint();
+    calc();
+  }
+
+  function calc() {
+    const p = num(price), w = num(weight), d = num(disc) || 0, s = num(seller);
+    const warn = $('warn'), t = L();
+    if (!(p > 0) || !(w > 0) || !(s > 0)) {
+      ['s1','s2','s3','s4'].forEach(id => $(id).textContent = '—');
+      ['s1f','s2f','s3f','s4f'].forEach(id => $(id).textContent = '');
+      $('perGram').textContent = '—';
+      $('perGramVat').textContent = '';
+      $('summary').textContent = t.empty;
+      warn.hidden = true;
+      return;
+    }
+    const x = s * (1 - d / 100);
+    const gold = p * w;
+    const cut = x - gold;
+    const per = cut / w;
+
+    $('s1f').textContent = `${fmt(s)} − ${d}%`;
+    $('s1').textContent = fmt(x);
+    $('s2f').textContent = `${fmt(p)} × ${w} g`;
+    $('s2').textContent = fmt(gold);
+    $('s3f').textContent = `${fmt(x)} − ${fmt(gold)}`;
+    $('s3').textContent = fmt(cut);
+    $('s3').className = 'num' + (cut < 0 ? ' neg' : '');
+    $('s4f').textContent = `${fmt(cut)} ÷ ${w} g`;
+    $('s4').textContent = fmt(per);
+
+    $('perGram').textContent = fmt(per);
+    $('perGramVat').textContent = t.withVat(fmt(per * (1 + d / 100)));
+    $('summary').textContent = t.summary(karat, w, fmt(x), fmt(cut));
+
+    if (cut < 0) { warn.textContent = t.warn; warn.hidden = false; } else warn.hidden = true;
+  }
+
+  document.querySelectorAll('#karats button').forEach(b => b.addEventListener('click', () => setKarat(+b.dataset.k)));
+  document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => {
+    lang = b.dataset.l;
+    try { localStorage.setItem('goldLang', lang); } catch (e) {}
+    applyLang();
+  }));
+  price.addEventListener('input', () => { updateHint(); calc(); });
+  $('resetPrice').addEventListener('click', () => setKarat(karat));
+  [weight, disc, seller].forEach(el => el.addEventListener('input', calc));
+
+  setKarat(18);
+  applyLang();
+
+  // On GitHub Pages, load the latest prices saved by the daily update
+  fetch('prices.json', { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      if (!j || !(j['18'] > 0)) return;
+      today = j;
+      setKarat(karat);
+    })
+    .catch(() => {});
+})();
+</script>
