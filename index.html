@@ -71,6 +71,7 @@ header a { color: var(--gold); font-weight: 600; }
   font-variant-numeric: tabular-nums;
 }
 .inp input::placeholder { color: var(--muted); opacity: .6; font-weight: 500; }
+.inp input.fixed { background: var(--surface); color: var(--muted); border-style: dashed; cursor: default; pointer-events: none; }
 .inp span { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: .8rem; font-weight: 600; pointer-events: none; }
 input:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
@@ -140,7 +141,7 @@ footer { display: flex; justify-content: center; padding-top: 4px; }
       </div>
       <div class="field">
         <label for="disc" data-t="vat">VAT</label>
-        <div class="inp"><input id="disc" type="number" inputmode="decimal" step="0.5" min="0" max="100" value="5"><span>%</span></div>
+        <div class="inp"><input id="disc" type="number" value="5" readonly tabindex="-1" aria-readonly="true" class="fixed"><span>%</span></div>
       </div>
       <div class="field full">
         <label for="seller" data-t="seller">Seller's price</label>
@@ -307,7 +308,7 @@ footer { display: flex; justify-content: center; padding-top: 4px; }
   }));
   price.addEventListener('input', () => { updateHint(); calc(); });
   $('resetPrice').addEventListener('click', () => setKarat(karat));
-  [weight, disc, seller].forEach(el => el.addEventListener('input', calc));
+  [weight, seller].forEach(el => el.addEventListener('input', calc));
 
   setKarat(18);
   applyLang();
